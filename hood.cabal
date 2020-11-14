@@ -1,32 +1,42 @@
-Name:                hood
-Version:             0.3.1
-Synopsis:            Debugging by observing in place
-Description:         Hood debugger, based on the idea of observing functions and structures as they are evaluated.
-Category:            Debug, Trace
-License:             BSD3
-License-file:        LICENSE
-Author:              Andy Gill
-Maintainer:          Andy Gill <andygill@ku.edu>
-Copyright:           (c) 2000 Andy Gill, (c) 2010-2015 University of Kansas, (c) 2013-2015 Maarten Faddegon
-Homepage:            http://ku-fpg.github.io/software/hood
-bug-reports:         https://github.com/ku-fpg/hood/issues
-Stability:           alpha
-build-type:          Simple
-Cabal-Version:       >= 1.8
-tested-with:         GHC == 7.4.2
-                   , GHC == 7.6.3
-                   , GHC == 7.8.4
-                   , GHC == 7.10.3
-                   , GHC == 8.0.2
-                   , GHC == 8.2.2
-                   , GHC == 8.4.3
-extra-source-files:  CHANGELOG.md, README.md
+cabal-version: 1.12
 
-Library
-  Build-Depends: base >= 4.5 && < 5, array, FPretty, ghc-prim
-  Exposed-modules:
-      Debug.Hood.Observe
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 0ba05e93a4b1c89a617963b4804698c1750b1eb7b45f5600b82a3526aeae3f50
+
+name:           hood
+version:        0.3.1.0
+synopsis:       Debugging by observing in place
+description:    Hood debugger, based on the idea of observing functions and structures as they are evaluated.
+category:       Debug, Trace
+homepage:       http://ku-fpg.github.io/software/hood
+bug-reports:    https://github.com/ku-fpg/hood/issues
+author:         Andy Gill
+maintainer:     Andy Gill <andygill@ku.edu>
+copyright:      (c) 2000 Andy Gill, (c) 2010-2015 University of Kansas, (c) 2013-2015 Maarten Faddegon
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
 
 source-repository head
-    type:     git
-    location: https://github.com/ku-fpg/hood
+  type: git
+  location: https://github.com/ku-fpg/hood
+
+library
+  exposed-modules:
+      Debug.Hood.Observe
+  other-modules:
+      Paths_hood
+  hs-source-dirs:
+      ./.
+  build-depends:
+      FPretty
+    , array
+    , base
+    , ghc-prim
+  default-language: Haskell2010

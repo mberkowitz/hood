@@ -1,0 +1,26 @@
+name:                hood
+version:             0.3.1.0
+synopsis:            Debugging by observing in place
+description:         Hood debugger, based on the idea of observing functions and structures as they are evaluated.
+category:            Debug, Trace
+license:             BSD3
+license-file:        LICENSE
+author:              Andy Gill
+maintainer:          Andy Gill <andygill@ku.edu>
+copyright:           (c) 2000 Andy Gill, (c) 2010-2015 University of Kansas, (c) 2013-2015 Maarten Faddegon
+homepage:            http://ku-fpg.github.io/software/hood
+github:              ku-fpg/hood
+
+extra-source-files:
+  - README.md
+  - CHANGELOG.md
+
+dependencies:
+  - base
+  - array
+  - FPretty
+  - ghc-prim
+
+library:
+  source-dirs: .
+  exposed-modules: Debug.Hood.Observe
