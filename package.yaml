@@ -24,3 +24,12 @@ dependencies:
 library:
   source-dirs: .
   exposed-modules: Debug.Hood.Observe
+
+tests:
+  test:
+    source-dirs: test
+    main: Test.hs
+    dependencies:
+      - hood
+      - HUnit
+      - silently
