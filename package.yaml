@@ -24,3 +24,9 @@ dependencies:
 library:
   source-dirs: .
   exposed-modules: Debug.Hood.Observe
+tests:
+  examples:
+    main: examples.hs
+    source-dirs: examples
+    dependencies:
+    - hood
