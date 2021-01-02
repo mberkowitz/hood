@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f76aa68f65e1c5aefdcfff0abb851b3b86d480dc9454c4cc29c0dc31573f3a70
+-- hash: 326758120e2d950656cef38d3f6da084fc61b26c33f52a74e2b3e07ebd96c0db
 
 name:           hood
 version:        0.3.1.0
@@ -41,17 +41,19 @@ library
     , ghc-prim
   default-language: Haskell2010
 
-test-suite examples
+test-suite test
   type: exitcode-stdio-1.0
-  main-is: examples.hs
+  main-is: Test.hs
   other-modules:
       Paths_hood
   hs-source-dirs:
-      examples
+      test
   build-depends:
       FPretty
+    , HUnit
     , array
     , base
     , ghc-prim
     , hood
+    , silently
   default-language: Haskell2010

@@ -6,6 +6,13 @@
 --     /usr/local/book/cs/lang/haskell/papers/debug/10.1.1.84.9011.pdf
 
 import Debug.Hood.Observe
+import System.IO.Silently
+import GHC.IO.Handle.FD (stdin, stdout, stderr)
+
+-- this works: (x,_) <- hCapture [stdout,stderr] $ printO h1
+-- now lines x = [
+--  "[2,3,4]","","-- +1","  { \\ 1  -> 2","  }","-- +1","  { \\ 2  -> 3","  }","-- +1","  { \\ 3  -> 4","  }","-- xs","   1 :  2 :  3 : []",""
+-- ]
 
 -- From hackage:
 
