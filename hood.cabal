@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 326758120e2d950656cef38d3f6da084fc61b26c33f52a74e2b3e07ebd96c0db
+-- hash: ed6ba13fbd331efa013f1c4a4676f09722c1906e13accb6b1dcc95507c9f387e
 
 name:           hood
 version:        0.3.1.0
@@ -35,7 +35,7 @@ library
   hs-source-dirs:
       ./.
   build-depends:
-      FPretty
+      FPretty >=1.1.1
     , array
     , base
     , ghc-prim
@@ -49,7 +49,7 @@ test-suite test
   hs-source-dirs:
       test
   build-depends:
-      FPretty
+      FPretty >=1.1.1
     , HUnit
     , array
     , base
