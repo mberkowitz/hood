@@ -11,33 +11,31 @@ import GHC.IO.Handle.FD (stdin, stdout, stderr)
 import Data.Char (isSpace)
 import Debug.Trace
 
--- test harness:
+-- HOOD writes "observations" to stderr as a formatted string.
+-- We break this output into lines so it is readable.
 
-chomp::[String]->String
-chomp [] = ""
-chomp (s:rest) = s
-
-blank::String->Bool
-blank s = all isSpace s
-
--- HOOD writes "observations" to stderr as a formatted string. To be readable,
--- we break this output into lines.
-type ActualObservations = [String]
-type ExpectedObservations = [String]
-type ActualValue = String
-type ExpectedValue = String
+type Value = String
+type Observation = [String]
 
 -- (caughtO FORM) runs (printO FORM) and captures the results.
-caughtO :: Show a => a -> IO (ActualValue, ActualObservations)
+caughtO :: Show a => a -> IO (Value, Observation)
 caughtO form = do
-   (o, v) <- hCapture [stderr] $ capture_ $ printO $ form
-   let obs = filter (not . blank) (lines o)
-   let val = chomp (lines v)
-   return (val, obs)
+    (o, v) <- hCapture [stderr] $ capture_ $ printO $ form
+    -- remove blank lines
+    let val = first (lines v)
+    let obs = filter (not . blank) (lines o)
+    return (val, obs)
+  where
+    first::[String]->String
+    first [] = ""
+    first (s:rest) = s
+    blank::String->Bool
+    blank s = all isSpace s
 
---- tests (printO FORM):
-tprintO :: Show a => a -> ExpectedValue -> ExpectedObservations -> Test
-tprintO form exVal exObs = TestCase trial
+-- makes a test case for (printO FORM), with an expected value and an expected
+-- observation.
+tc :: Show a => a -> Value -> Observation -> Test
+tc form exVal exObs = TestCase trial
   where
     trial = do
       (acVal, acObs) <- caughtO form
@@ -45,22 +43,46 @@ tprintO form exVal exObs = TestCase trial
       assertEqual "wrong observation" exObs acObs
       return ()
 
+-- Sometimes there is more than one valid expected observation. In an
+-- observation, a function is shown as a finite map. This is slightly
+-- indeterminate (as of hood 0.3.1.0 with ghc 8.2.2 and stack lts-10.7): in a
+-- compiled test case, a function is show as one map, but when a test is run in
+-- a repl, the function is shown as a set of maps.
+
+-- makes a test case for (printO FORM), with an expected value and a list of
+-- valid observations.
+tc2 :: Show a => a -> Value -> [Observation] -> Test
+tc2 form exVal valids = TestCase trial
+  where
+    trial = do
+      (acVal, acObs) <- caughtO form
+      assertEqual "wrong value" exVal acVal
+      assertMatches "wrong observation" valids acObs
+      return ()
+    assertMatches tag valids actual = assertBool tag (matches valids actual)
+    matches::[Observation]->Observation->Bool
+    matches valids actual = any (actual ==) valids
+
 
 -- Test Cases
 
 -- From hackage.
 h1::[Int]
 h1 = [observe "+1" (+1) x | x <- observe "xs" [1..3]]
-test_h1 = "test_h1 " ~: tprintO h1
+test_h1 = "test_h1 " ~: tc2 h1
           "[2,3,4]"
-          ["-- +1","  { \\ 1  -> 2","  , \\ 2  -> 3","  , \\ 3  -> 4","  }",
-           "-- xs","   1 :  2 :  3 : []"]
+          [["-- +1","  { \\ 1  -> 2","  , \\ 2  -> 3","  , \\ 3  -> 4","  }",
+            "-- xs","   1 :  2 :  3 : []"],
+           ["-- +1","  { \\ 1  -> 2","  }",
+            "-- +1","  { \\ 2  -> 3","  }",
+            "-- +1","  { \\ 3  -> 4","  }",
+            "-- xs","   1 :  2 :  3 : []" ]]
 
 -- From the home page.
 -- Hood can observe data structures:
 h2 :: [Int] -> [Int]
 h2 = reverse . (observe "intermediate") . reverse
-test_h2  = "test_h2 " ~: tprintO (h2 [1..10])
+test_h2  = "test_h2 " ~: tc (h2 [1..10])
            "[1,2,3,4,5,6,7,8,9,10]"
            ["-- intermediate",
             "   10 :  9 :  8 :  7 :  6 :  5 :  4 :  3 :  2 :  1 : []" ]
@@ -68,7 +90,7 @@ test_h2  = "test_h2 " ~: tprintO (h2 [1..10])
 -- Hood can observe functions:
 h3::Int
 h3 = observe "foldl (+) 0 [1..4]" foldl (+) 0 [1..4]
-test_h3  = "test_h3 " ~: tprintO h3
+test_h3  = "test_h3 " ~: tc h3
           "10"
           ["-- foldl (+) 0 [1..4]",
            "  { \\ { \\ 0 1  -> 1",
@@ -80,7 +102,7 @@ test_h3  = "test_h3 " ~: tprintO h3
 
 -- If an argument is not examined in the function, it remains unevaluated.
 h4 = observe "sum xs" (\ xs ys -> sum xs) [(0::Int)..2] [(0::Int)..]
-test_h4  = "test_h4 " ~: tprintO h4
+test_h4  = "test_h4 " ~: tc h4
          "3"
          ["-- sum xs","  { \\ ( 0 :  1 :  2 : [] ) _  -> 3","  }"]
 
@@ -88,7 +110,7 @@ test_h4  = "test_h4 " ~: tprintO h4
 -- From the workshop paper: simple examples of each feature.
 -- (3.1) Observing a list
 ex1 = (observe "list" :: Observing [Int]) [0..9]
-test_ex1 = "test_ex1" ~: tprintO ex1
+test_ex1 = "test_ex1" ~: tc ex1
          "[0,1,2,3,4,5,6,7,8,9]"
          ["-- list","   0 :  1 :  2 :  3 :  4 :  5 :  6 :  7 :  8 :  9 : []"]
 
@@ -97,47 +119,47 @@ test_ex1 = "test_ex1" ~: tprintO ex1
 -- (observe can be used partially applied, which is the typical use scenario when
 -- observing inside a point-free pipeline.)
 ex2  = reverse . (observe "intermediate" :: Observing[Int]) . reverse
-test_ex2 = "test_ex2" ~: tprintO (ex2 [0..10])
+test_ex2 = "test_ex2" ~: tc (ex2 [0..10])
          "[0,1,2,3,4,5,6,7,8,9,10]"
           ["-- intermediate",
            "   10 :  9 :  8 :  7 :  6 :  5 :  4 :  3 :  2 :  1 :  0 : []"]
 
 -- (3.3) Observing an infinite list
 ex3 = take 10 (observe "infinite list" [(0::Int)..])
-test_ex3 = "test_ex3" ~: tprintO ex3
+test_ex3 = "test_ex3" ~: tc ex3
          "[0,1,2,3,4,5,6,7,8,9]"
          ["-- infinite list",
           "   0 :  1 :  2 :  3 :  4 :  5 :  6 :  7 :  8 :  9 : _"]
 
 -- (3.4) Observing lists with unevaluated elements
 ex4 = length (observe "finite list" [(1::Int)..10])
-test_ex4 = "test_ex4" ~: tprintO ex4
+test_ex4 = "test_ex4" ~: tc ex4
          "10"
          ["-- finite list",
           "   _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ : []"]
 
 ex5 = length $
   (observe "finite list"::Observing[Int]) [error "oops!" | _ <- [0..9]]
-test_ex5 = "test_ex5" ~: tprintO ex5
+test_ex5 = "test_ex5" ~: tc ex5
          "10"
          ["-- finite list",
           "   _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ : []"]
 
 ex5a n = length $ (observe "finite list"::Observing[Int]) (replicate n (error "oops"))
-test_ex5a = "test_ex5" ~: tprintO (ex5a 10)
+test_ex5a = "test_ex5" ~: tc (ex5a 10)
          "10"
          ["-- finite list",
           "   _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ : []"]
 
 ex6 xs = (y !! 2 + y !! 4)
   where y = (observe "list" ::Observing[Int]) xs
-test_ex6 = "test_ex6" ~: tprintO (ex6 [0..5])
+test_ex6 = "test_ex6" ~: tc (ex6 [0..5])
          "6"
          ["-- list","   _ :  _ :  2 :  _ :  4 : _"]
 
 -- (4.1) Observing functions
 ex7 = (observe "length" length) [(1::Int)..3]
-test_ex7 = "test_ex7" ~: tprintO ex7
+test_ex7 = "test_ex7" ~: tc ex7
          "3"
          ["-- length",
           "  { \\ ( _ :  _ :  _ : [] )  -> 3",
@@ -146,7 +168,7 @@ test_ex7 = "test_ex7" ~: tprintO ex7
 -- We place observe at the caller site, and can see the effect that a specific
 -- function has from this context, including higher order functions.
 ex8  = (observe "foldl (+) 0 [1..4]") foldl (+) (0::Int) [1..4]
-text_ex8 = "text_ex8" ~: tprintO ex8
+text_ex8 = "text_ex8" ~: tc ex8
          "10"
          ["-- foldl (+) 0 [1..4]",
           "  { \\ { \\ 0 1  -> 1",
@@ -177,7 +199,7 @@ natural1 =
   . (observe "2 after takeWhile") . takeWhile (/= 0)
   . (observe "1 after iterate") . iterate (`div` 10)
 
-test_natural1 = "test_natural1" ~: tprintO (natural1 3408)
+test_natural1 = "test_natural1" ~: tc (natural1 3408)
               "[3,4,0,8]"
              ["-- 1 after iterate",
               "   3408 :  340 :  34 :  3 :  0 : _",
@@ -198,7 +220,7 @@ natural2 =
   . observe "2 takeWhile (/= 0)"   takeWhile (/= 0)
   . observe "1 iterate (`div` 10)" iterate (`div` 10)
 
-test_natural2 = "test_natural2" ~: tprintO (natural2 3408)
+test_natural2 = "test_natural2" ~: tc (natural2 3408)
               "[3,4,0,8]"
              ["-- 1 iterate (`div` 10)",
               "  { \\ { \\ 3  -> 0",
@@ -243,7 +265,7 @@ natural3 = observers "natural" $ \(O observe) ->
   . (observe "1 after iterate"    :: Observing [Int])
   . iterate (`div` 10)
 
-test_natural3 = "test_natural3" ~: tprintO (natural3 3408, natural3 123)
+test_natural3 = "test_natural3" ~: tc (natural3 3408, natural3 123)
               "([3,4,0,8],[1,2,3])"
              ["-- natural",
               "  { \\ 3408  ->  3 :  4 :  0 :  8 : []",
