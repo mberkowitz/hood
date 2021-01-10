@@ -20,7 +20,7 @@ type Observation = [String]
 -- (caughtO FORM) runs (printO FORM) and captures the results.
 caughtO :: Show a => a -> IO (Value, Observation)
 caughtO form = do
-    (o, v) <- hCapture [stderr] $ capture_ $ printO $ form
+    (o, v) <- hCapture [stderr] $ capture_ $ printO form
     -- remove blank lines
     let val = first (lines v)
     let obs = filter (not . blank) (lines o)
@@ -61,7 +61,7 @@ tc2 form exVal valids = TestCase trial
       return ()
     assertMatches tag valids actual = assertBool tag (matches valids actual)
     matches::[Observation]->Observation->Bool
-    matches valids actual = any (actual ==) valids
+    matches valids actual = actual `elem` valids
 
 
 -- Test Cases
@@ -81,7 +81,7 @@ test_h1 = "test_h1 " ~: tc2 h1
 -- From the home page.
 -- Hood can observe data structures:
 h2 :: [Int] -> [Int]
-h2 = reverse . (observe "intermediate") . reverse
+h2 = reverse . observe "intermediate" . reverse
 test_h2  = "test_h2 " ~: tc (h2 [1..10])
            "[1,2,3,4,5,6,7,8,9,10]"
            ["-- intermediate",
@@ -151,14 +151,14 @@ test_ex5a = "test_ex5" ~: tc (ex5a 10)
          ["-- finite list",
           "   _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ :  _ : []"]
 
-ex6 xs = (y !! 2 + y !! 4)
+ex6 xs = y !! 2 + y !! 4
   where y = (observe "list" ::Observing[Int]) xs
 test_ex6 = "test_ex6" ~: tc (ex6 [0..5])
          "6"
          ["-- list","   _ :  _ :  2 :  _ :  4 : _"]
 
 -- (4.1) Observing functions
-ex7 = (observe "length" length) [(1::Int)..3]
+ex7 = observe "length" length [(1::Int)..3]
 test_ex7 = "test_ex7" ~: tc ex7
          "3"
          ["-- length",
@@ -167,7 +167,7 @@ test_ex7 = "test_ex7" ~: tc ex7
 
 -- We place observe at the caller site, and can see the effect that a specific
 -- function has from this context, including higher order functions.
-ex8  = (observe "foldl (+) 0 [1..4]") foldl (+) (0::Int) [1..4]
+ex8  = observe "foldl (+) 0 [1..4]" foldl (+) (0::Int) [1..4]
 text_ex8 = "text_ex8" ~: tc ex8
          "10"
          ["-- foldl (+) 0 [1..4]",
@@ -188,16 +188,16 @@ natural0 =
   . takeWhile (/= 0)
   . iterate (`div` 10)
 
-test_natural0 = "test_natural0" ~: (natural0 3408) ~?= [3,4,0,8]
+test_natural0 = "test_natural0" ~: natural0 3408 ~?= [3,4,0,8]
 
 -- (3.5) Using more than one observer.
 -- Note that observation parts are sorted by tag.
 natural1 :: Int -> [Int]
 natural1 =
-    (observe "4 after reverse") . reverse
-  . (observe "3 after map") . map (`mod` 10)
-  . (observe "2 after takeWhile") . takeWhile (/= 0)
-  . (observe "1 after iterate") . iterate (`div` 10)
+    observe "4 after reverse"   . reverse
+  . observe "3 after map"       . map (`mod` 10)
+  . observe "2 after takeWhile" . takeWhile (/= 0)
+  . observe "1 after iterate"   . iterate (`div` 10)
 
 test_natural1 = "test_natural1" ~: tc (natural1 3408)
               "[3,4,0,8]"
